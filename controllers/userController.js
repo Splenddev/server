@@ -13,7 +13,7 @@ const loginUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User doesnt exists. Please Login',
+        message: 'User doesnt exists. Please signup',
       });
     }
 
@@ -26,6 +26,10 @@ const loginUser = async (req, res) => {
     }
 
     const token = createToken(user._id);
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+      if (err) console.log('Token expired.', err.message);
+      else console.log('Token valid until:', new Date(decoded.exp * 1000));
+    });
     res.status(200).json({
       success: true,
       message: 'login successful',
@@ -42,7 +46,7 @@ const loginUser = async (req, res) => {
 };
 
 const createToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET);
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 };
 //sign Up User
 const signUpUser = async (req, res) => {
@@ -52,7 +56,7 @@ const signUpUser = async (req, res) => {
     //User already exists
     const exist = await userModel.findOne({ email });
     if (exist) {
-      return res.status(404).json({
+      return res.status(409).json({
         success: false,
         message: 'Email already exists. Please Login',
       });
@@ -95,7 +99,7 @@ const signUpUser = async (req, res) => {
     const token = createToken(user._id);
     res.json({
       success: true,
-      message: 'User created. Now you can proceed to the app',
+      message: 'User created. Now you can proceed to Login.',
       token,
     });
   } catch (error) {
@@ -113,11 +117,10 @@ const updateUserInfo = async (req, res) => {
       });
     }
     let userData = await userModel.findOne({ _id: req.body.userId });
-    if (!userData) {
-      return res.status(404).json({
+    if (!mongoose.isValidObjectId(req.body.userId)) {
+      return res.status(400).json({
         success: false,
-        message: ' user not found.',
-        error: error.message,
+        message: 'Invalid user ID format.',
       });
     }
     const userDataUpdate = { ...req.body };
@@ -156,40 +159,6 @@ const updateUserInfo = async (req, res) => {
           'No changes detected. The provided password matches the existing data.',
       });
     }
-    //   if () {
-    //     return res.status(200).json({
-    //       success: false,
-    //       message: `No changes detected. The provided phone number ${userDataUpdate.phoneNumber} matches the existing data.`,
-    //     });
-    //   }
-    // }
-
-    // if (userDataUpdate.name && userDataUpdate.name !== userData.name) {
-    //   isSameData = false;
-    // }
-    // if (
-    //   userDataUpdate.phoneNumber &&
-    //   userDataUpdate.phoneNumber !== userData.phoneNumber
-    // ) {
-    //   isSameData = false;
-    // }
-    // if (userDataUpdate.password) {
-    //   const isSsamePassword = await bcrypt.compare(
-    //     userDataUpdate.password,
-    //     userData.password
-    //   );
-    //   if (!isSsamePassword) {
-    //     isSameData = false;
-    //   }
-    // }
-
-    // if (isSameData) {
-    //   return res.status(200).json({
-    //     success: false,
-    //     message:
-    //       'No changes detected. The provided data matches the existing data.',
-    //   });
-    // }
 
     if (userDataUpdate.password) {
       if (
@@ -238,7 +207,13 @@ const updateUserInfo = async (req, res) => {
 const deleteUser = async (req, res) => {
   const userId = req.params.userId;
   try {
-    await userModel.findByIdAndDelete(userId);
+    const deletedUser = await userModel.findByIdAndDelete(userId);
+    if (!deletedUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found. No account deleted.',
+      });
+    }
     return res.status(200).json({
       success: true,
       message: 'User account deleted successfully.',

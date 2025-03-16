@@ -7,7 +7,15 @@ const authMiddleware = async (req, res, next) => {
     return res.json({ success: false, message: 'Not Authorized! Login again' });
   }
   try {
-    const token_decode = jwt.verify(token, process.env.JWT_SECRET);
+    const token_decode = jwt.verify(token, process.env.JWT_SECRET, (err) => {
+      if (err) {
+        return res.status(401).json({
+          success: false,
+          message: 'Token expired or invalid.',
+          error: err.message,
+        });
+      }
+    });
     req.body.userId = token_decode.id;
     next();
   } catch (error) {

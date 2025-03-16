@@ -24,7 +24,7 @@ import {
   updateUserInfo,
   deleteUser,
 } from '../controllers/userController.js';
-import authMiddleware from '../middlewares/authMiddleware.js';
+import authMiddleware from '../middlewares/auth.js';
 
 const router = express.Router();
 

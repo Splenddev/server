@@ -5,7 +5,7 @@ import userModel from '../models/userModel.js';
 import mongoose from 'mongoose';
 
 const createToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '10s' });
 };
 
 //log in user

@@ -23,7 +23,6 @@ import {
   signUpUser,
   updateUserInfo,
   deleteUser,
-  refreshAccessToken,
 } from '../controllers/userController.js';
 import authMiddleware from '../middlewares/auth.js';
 

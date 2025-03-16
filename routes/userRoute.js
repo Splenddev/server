@@ -20,9 +20,10 @@ import express from 'express';
 import {
   loginUser,
   signUpUser,
-  refreshToken,
+  refreshAccessToken,
   updateUserInfo,
   deleteUser,
+  refreshAccessToken,
 } from '../controllers/userController.js';
 import authMiddleware from '../middlewares/auth.js';
 
@@ -31,7 +32,7 @@ const router = express.Router();
 // Public Routes
 router.post('/signup', signUpUser);
 router.post('/login', loginUser);
-router.post('/refresh', refreshToken);
+router.post('/refresh', refreshAccessToken);
 
 // Protected Routes (Requires Authentication)
 router.put('/update', authMiddleware, updateUserInfo);

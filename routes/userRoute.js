@@ -1,17 +1,40 @@
+// import express from 'express';
+// import {
+//   deleteUser,
+//   loginUser,
+//   signUpUser,
+//   updateUserInfo,
+// } from '../controllers/userController.js';
+// import authMiddleware from '../middlewares/auth.js';
+
+// const userRouter = express.Router();
+
+// userRouter.post('/register', signUpUser);
+// userRouter.post('/login', loginUser);
+// userRouter.put('/update', authMiddleware, updateUserInfo);
+// userRouter.delete('/delete', authMiddleware, deleteUser);
+
+// export default userRouter;
+
 import express from 'express';
 import {
-  deleteUser,
   loginUser,
   signUpUser,
+  refreshToken,
   updateUserInfo,
-} from '../controllers/userController.js';
-import authMiddleware from '../middlewares/auth.js';
+  deleteUser,
+} from '../controllers/authController.js';
+import authMiddleware from '../middlewares/authMiddleware.js';
 
-const userRouter = express.Router();
+const router = express.Router();
 
-userRouter.post('/register', signUpUser);
-userRouter.post('/login', loginUser);
-userRouter.patch('/update', authMiddleware, updateUserInfo);
-userRouter.delete('/delete', authMiddleware, deleteUser);
+// Public Routes
+router.post('/signup', signUpUser);
+router.post('/login', loginUser);
+router.post('/refresh', refreshToken);
 
-export default userRouter;
+// Protected Routes (Requires Authentication)
+router.put('/update', authMiddleware, updateUserInfo);
+router.delete('/delete', authMiddleware, deleteUser);
+
+export default router;

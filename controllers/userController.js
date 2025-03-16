@@ -4,6 +4,10 @@ import validator from 'validator';
 import userModel from '../models/userModel.js';
 import mongoose from 'mongoose';
 
+const createToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+};
+
 //log in user
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
@@ -26,10 +30,7 @@ const loginUser = async (req, res) => {
     }
 
     const token = createToken(user._id);
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-      if (err) console.log('Token expired.', err.message);
-      else console.log('Token valid until:', new Date(decoded.exp * 1000));
-    });
+
     res.status(200).json({
       success: true,
       message: 'login successful',
@@ -45,9 +46,6 @@ const loginUser = async (req, res) => {
   }
 };
 
-const createToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-};
 //sign Up User
 const signUpUser = async (req, res) => {
   const { name, password, email } = req.body;
@@ -182,7 +180,7 @@ const updateUserInfo = async (req, res) => {
       );
     }
     if (userDataUpdate.phoneNumber) {
-      userDataUpdate.password = Number(userDataUpdate.phoneNumber);
+      userDataUpdate.phoneNumber = Number(userDataUpdate.phoneNumber);
     }
     if (userDataUpdate.name) {
       userDataUpdate.name = userDataUpdate.name;

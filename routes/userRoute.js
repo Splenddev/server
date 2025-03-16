@@ -18,9 +18,9 @@
 
 import express from 'express';
 import {
+  refreshAccessToken,
   loginUser,
   signUpUser,
-  refreshAccessToken,
   updateUserInfo,
   deleteUser,
   refreshAccessToken,
@@ -30,9 +30,9 @@ import authMiddleware from '../middlewares/auth.js';
 const router = express.Router();
 
 // Public Routes
+router.post('/refresh', refreshAccessToken);
 router.post('/signup', signUpUser);
 router.post('/login', loginUser);
-router.post('/refresh', refreshAccessToken);
 
 // Protected Routes (Requires Authentication)
 router.put('/update', authMiddleware, updateUserInfo);

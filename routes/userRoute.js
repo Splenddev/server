@@ -1,40 +1,17 @@
-// import express from 'express';
-// import {
-//   deleteUser,
-//   loginUser,
-//   signUpUser,
-//   updateUserInfo,
-// } from '../controllers/userController.js';
-// import authMiddleware from '../middlewares/auth.js';
-
-// const userRouter = express.Router();
-
-// userRouter.post('/register', signUpUser);
-// userRouter.post('/login', loginUser);
-// userRouter.put('/update', authMiddleware, updateUserInfo);
-// userRouter.delete('/delete', authMiddleware, deleteUser);
-
-// export default userRouter;
-
 import express from 'express';
 import {
-  refreshAccessToken,
+  deleteUser,
   loginUser,
   signUpUser,
   updateUserInfo,
-  deleteUser,
 } from '../controllers/userController.js';
 import authMiddleware from '../middlewares/auth.js';
 
-const router = express.Router();
+const userRouter = express.Router();
 
-// Public Routes
-router.post('/refresh', refreshAccessToken);
-router.post('/signup', signUpUser);
-router.post('/login', loginUser);
+userRouter.post('/register', signUpUser);
+userRouter.post('/login', loginUser);
+userRouter.put('/update', authMiddleware, updateUserInfo);
+userRouter.delete('/delete', authMiddleware, deleteUser);
 
-// Protected Routes (Requires Authentication)
-router.put('/update', authMiddleware, updateUserInfo);
-router.delete('/delete', authMiddleware, deleteUser);
-
-export default router;
+export default userRouter;

@@ -12,7 +12,15 @@ const authMiddleware = async (req, res, next) => {
     next();
   } catch (error) {
     console.log(error);
-    res.json({ success: false, message: 'Error!' });
+    if (error.name === 'TokenExpiredError') {
+      return res
+        .status(401)
+        .json({
+          success: false,
+          message: 'Session expired. Please login again!',
+        });
+    }
+    res.json({ success: false, message: 'Invalid token!' });
   }
 };
 export default authMiddleware;

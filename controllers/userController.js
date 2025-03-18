@@ -4,10 +4,6 @@ import validator from 'validator';
 import userModel from '../models/userModel.js';
 import mongoose from 'mongoose';
 
-const createToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '10s' });
-};
-
 //log in user
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
@@ -44,6 +40,10 @@ const loginUser = async (req, res) => {
       message: 'Internal Server Error!',
     });
   }
+};
+
+const createToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 };
 
 //sign Up User

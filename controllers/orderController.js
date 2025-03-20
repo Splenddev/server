@@ -8,7 +8,7 @@ dotenv.config();
 //placing orders from frontend
 const placeOrder = async (req, res) => {
   try {
-    const { items, amount, address, userId, date } = req.body;
+    const { items, amount, address, userId } = req.body;
     if (!items.length || !amount || !address) {
       return res.status(400).json({ message: 'All fields are required.' });
     }
@@ -18,12 +18,13 @@ const placeOrder = async (req, res) => {
       items,
       amount,
       address,
-      date,
       payment: { status: 'pending' },
     });
     await newOrder.save();
     res.status(200).json({ success: true, orders: newOrder });
     await userModel.findByIdAndUpdate(userId, { cartData: {} });
+
+    const user = await userModel.findById(userId);
 
     const transactionRef = `food_order_${Date.now()}`;
     const orderSummary = items
@@ -38,8 +39,8 @@ const placeOrder = async (req, res) => {
         currency: 'NGN',
         redirect_url: `http://localhost:5173/verify-payment`,
         customer: {
-          email: req.body.email,
-          name: req.body.name,
+          email: user.email,
+          name: user.name,
         },
         payment_option: 'card,banktransfer,ussd',
         customizations: {
@@ -64,10 +65,12 @@ const placeOrder = async (req, res) => {
     });
   } catch (error) {
     console.log(error.message);
-    return res.status(500).json({
-      success: false,
-      error: 'payment processing failed',
-    });
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        error: 'payment processing failed',
+      });
+    }
   }
 };
 

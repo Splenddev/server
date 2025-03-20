@@ -55,15 +55,16 @@ const placeOrder = async (req, res) => {
         },
       }
     );
-    res.status(200).json({
+    console.log(newOrder._id);
+
+    return res.status(200).json({
       success: true,
       payment_url: response.data.data.link,
       orderId: newOrder._id,
     });
-    console.log(newOrder._id);
   } catch (error) {
     console.log(error.message);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'payment processing failed',
     });

@@ -10,17 +10,25 @@ import orderRouter from './routes/orderRoutes.js';
 const app = express();
 const port = process.env.PORT || 4000;
 
+const allowedOrigin = [
+  'http://localhost:5173/',
+  'https://kitchen-connect-com.onrender.com/',
+];
+
 // middleware
 app.use(
   cors({
-    origin:
-      // 'https://kitchen-connect-com.onrender.com' ||
-      'http://localhost:5173',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content_Type', 'Authorization'],
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigin.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'PUT', 'POST', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
-app.use(cors());
 app.use(express.json());
 
 // db connection

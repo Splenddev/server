@@ -27,9 +27,9 @@ const placeOrder = async (req, res) => {
     const user = await userModel.findById(userId);
 
     const transactionRef = `food_order_${Date.now()}`;
-    const orderSummary = items
-      .map((item) => `${item.name} x${item.quantity}`)
-      .join(', ');
+    // const orderSummary = items
+    //   .map((item) => `${item.name} x${item.quantity}`)
+    //   .join(', ');
     // payment setup
     const response = await axios.post(
       'https://api.flutterwave.com/v3/payments',
@@ -45,10 +45,10 @@ const placeOrder = async (req, res) => {
         payment_option: 'card,banktransfer,ussd',
         customizations: {
           title: 'Kitchen Connect',
-          description: `Order: ${orderSummary}`,
-          logo: '../assets/logo.png',
+          // description: `Order: ${orderSummary}`,
+          // logo: '../assets/logo.png',
         },
-        meta: { order_items: items },
+        // meta: { order_items: items },
       },
       {
         headers: {
@@ -60,8 +60,8 @@ const placeOrder = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      payment_url: response.data.data.link,
-      orderId: newOrder._id,
+      payment_url: response.data?.data?.link,
+      orderId: newOrder?._id,
     });
   } catch (error) {
     // console.log(error.message);

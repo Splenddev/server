@@ -25,7 +25,7 @@ const placeOrder = async (req, res) => {
     res.status(200).json({ success: true, orders: newOrder });
     await userModel.findByIdAndUpdate(userId, { cartData: {} });
 
-    const transactionRef = `food_order_${newOrder._id}`;
+    const transactionRef = `food_order_${Date.now()}`;
     const orderSummary = items
       .map((item) => `${item.name} x${item.quantity}`)
       .join(', ');

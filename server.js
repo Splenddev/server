@@ -11,6 +11,15 @@ const app = express();
 const port = process.env.PORT || 4000;
 
 // middleware
+app.use(
+  cors({
+    origin:
+      // 'https://kitchen-connect-com.onrender.com' ||
+      'http://localhost:5173',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content_Type', 'Authorization'],
+  })
+);
 app.use(cors());
 app.use(express.json());
 

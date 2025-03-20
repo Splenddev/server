@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema(
     },
     password: { type: String, required: true },
     phoneNumber: { type: Number, default: 0 },
+    username: { type: String, default: '', unique: true },
     address: { type: String, default: '' },
     paymentOption: { type: String, default: 'Flutterwave' },
     profileImage: { type: String, required: false },
@@ -18,6 +19,12 @@ const userSchema = new mongoose.Schema(
     cartData: { type: Object, default: {} },
     settings: { type: Object, default: {} },
     orderHistory: { type: Object, default: {} },
+    previousCredentials: [
+      {
+        username: String,
+        changeDate: { type: Date, default: Date.now() },
+      },
+    ],
   },
   { minimize: false }
 );

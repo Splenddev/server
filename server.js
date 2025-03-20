@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import session from 'express-session';
 import { connectDB } from './config/db.js';
 import foodRouter from './routes/foodRoutes.js';
 import userRouter from './routes/userRoute.js';
@@ -13,7 +14,13 @@ const port = process.env.PORT || 4000;
 // middleware
 app.use(cors());
 app.use(express.json());
-
+app.use(
+  session({
+    secret: 'SESSION_SECRET_KEY',
+    resave: false,
+    saveUninitialized: false,
+  })
+);
 // db connection
 connectDB();
 

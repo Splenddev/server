@@ -2,7 +2,6 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import validator from 'validator';
 import userModel from '../models/userModel.js';
-import mongoose from 'mongoose';
 
 //log in user
 const loginUser = async (req, res) => {
@@ -105,123 +104,235 @@ const signUpUser = async (req, res) => {
     res.json({ success: false, message: 'Error!' });
   }
 };
+
+//update user info
 const updateUserInfo = async (req, res) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.body.userId)) {
+    const userId = req.body.userId;
+    const { name, email, username } = req.body;
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'User not found.' });
+    }
+    if (user.name === name) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Name matches the previous data.' });
+    }
+    if (user.email === email) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Email matches the previous data.' });
+    }
+    const isUsernameUsed =
+      user.previousCredentials.find((cred) => cred.username === username) !==
+      undefined;
+    if (isUsernameUsed) {
       return res.status(400).json({
         success: false,
-        message: ' user id not found.',
-        error: error.message,
-      });
-    }
-    let userData = await userModel.findOne({ _id: req.body.userId });
-    if (!mongoose.isValidObjectId(req.body.userId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid user ID format.',
-      });
-    }
-    const userDataUpdate = { ...req.body };
-    delete userDataUpdate._id;
-    delete userDataUpdate.email;
-
-    // let isSameData = true;
-    const isSamePassword = userDataUpdate.password
-      ? await bcrypt.compare(userDataUpdate.password, userData.password)
-      : true;
-    const isSameName = userDataUpdate.name
-      ? userDataUpdate.name === userData.name
-      : true;
-    const isSamePhoneNumber = userDataUpdate.phoneNumber
-      ? Number(userDataUpdate.phoneNumber) === userData.phoneNumber
-      : true;
-
-    if (isSameName && isSamePhoneNumber) {
-      return res.status(200).json({
-        success: false,
         message:
-          'No changes detected. All provided data matches the existing data.',
+          'This username was used before. Please choose a different one.',
       });
     }
-    // else {
-    if (isSameName || isSamePhoneNumber) {
-      return res.status(200).json({
-        success: false,
-        message: `No changes detected. One of the provided data matches the existing data.`,
-      });
-    }
-    if (isSamePassword) {
-      return res.status(200).json({
-        success: false,
-        message:
-          'No changes detected. The provided password matches the existing data.',
+    if (username !== user.username) {
+      user.previousCredentials.push({
+        username: user.username,
+        changeDate: new Date(),
       });
     }
 
-    if (userDataUpdate.password) {
-      if (
-        !validator.isStrongPassword(userDataUpdate.password, {
-          minLength: 8,
-          minUppercase: 1,
-          minNumbers: 1,
-          minSymbols: 1,
-        })
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Password must be at least 8 characters long, include a symbol, an uppercase and a number',
-        });
-      }
-      const salt = await bcrypt.genSalt(10);
-      userDataUpdate.password = await bcrypt.hash(
-        userDataUpdate.password,
-        salt
-      );
-    }
-    if (userDataUpdate.phoneNumber) {
-      userDataUpdate.phoneNumber = Number(userDataUpdate.phoneNumber);
-    }
-    if (userDataUpdate.name) {
-      userDataUpdate.name = userDataUpdate.name;
-    }
-
-    const updatedUserInfo = await userModel
-      .findByIdAndUpdate(req.body.userId, userDataUpdate, { new: true })
-      .select('-password -__v');
-    return res.status(200).json({
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (username) user.username = username;
+    await user.save();
+    res.status(200).json({
       success: true,
-      message: 'Changes saved successfully.',
-      data: updatedUserInfo,
+      message: 'Profile updated successfully.',
+      user,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to update user details.',
-      error: error.message,
-    });
+    console.log(error);
+    res.status(500).json({ success: false, message: 'Server error!' });
   }
 };
-const deleteUser = async (req, res) => {
-  const userId = req.params.userId;
+
+//update user password
+const updatePassword = async (req, res) => {
   try {
-    const deletedUser = await userModel.findByIdAndDelete(userId);
-    if (!deletedUser) {
-      return res.status(404).json({
+    const userId = req.body.userId;
+    const { oldPassword, newPassword } = req.body;
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'User not found.' });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    const isSame = await bcrypt.compare(newPassword, user.password);
+
+    if (!isMatch) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Incorrect old password.' });
+    }
+    if (isSame) {
+      return res.status(400).json({
         success: false,
-        message: 'User not found. No account deleted.',
+        message: 'New password matches old password.',
       });
     }
-    return res.status(200).json({
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+
+    await user.save();
+    return res
+      .status(200)
+      .json({ success: true, message: 'Password updated successfully.' });
+  } catch (error) {
+    console.log(error);
+
+    return res
+      .status(500)
+      .json({ success: false, message: 'Server error.', error });
+  }
+};
+
+//delete user account
+const deleteUser = async (req, res) => {
+  try {
+    const userId = req.body.userId;
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found.',
+      });
+    }
+
+    await userModel.findByIdAndDelete(userId);
+    res.status(200).json({
       success: true,
-      message: 'User account deleted successfully.',
+      message: 'Your account has been deleted successfully.',
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: 'Failed to delete user account.',
+      error,
+    });
+  }
+};
+
+//delete user account (admin)
+const deleteUserByAdmin = async (req, res) => {
+  const userId = req.params.id;
+  try {
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found.',
+      });
+    }
+    await userModel.findByIdAndDelete(userId);
+    res.status(200).json({
+      success: true,
+      message: 'User successfully deleted by admin.',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error.',
+      error,
+    });
+  }
+};
+
+//create username
+const createUsername = async (req, res) => {
+  try {
+    const { firstName, lastName, type } = req.body;
+
+    if (!req.session.usernameAttempts) {
+      req.session.usernameAttempts = 0;
+    }
+    if (req.session.usernameAttempts > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Limit reached! You can only generate 5 usernames.',
+      });
+    }
+    req.session.usernameAttempts++;
+
+    if (type === 'useFirstName' && (!firstName || firstName.length < 3)) {
+      return res.status(400).json({
+        success: false,
+        message: 'First name must be at least 3 characters long.',
+      });
+    }
+    if (type === 'useLastName' && (!lastName || lastName.length < 3)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Last name must be at least 3 characters long.',
+      });
+    }
+    let random_num = Math.floor(Math.random() * 100);
+    let newUserName = '';
+    let formattedCount = String(random_num).padStart(3, '0');
+    if (type === 'autoGen') {
+      if (!firstName || !lastname) {
+        const option = [
+          'KC_USER',
+          'KC_CUSTOMER',
+          'KITCHEN_CONNECT_CUSTOMER',
+          'KITCHEN_CONNECT_USER',
+        ];
+        newUserName =
+          option[Math.floor(Math.random() * option.length)] + formattedCount;
+      } else {
+        const option = [fisrtName, lastName];
+        newUserName =
+          option[Math.floor(Math.random() * option.length)] + formattedCount;
+      }
+    } else {
+      newUserName = type === 'useFirstName' ? firstName : lastName;
+      const random_figures =
+        Math.floor(Math.random() * 9).toString() +
+        Math.floor(Math.random() * 999);
+      newUserName += random_figures;
+    }
+
+    const isUserNameTaken = await userModel.findOne({ userName: newUserName });
+
+    if (isUserNameTaken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Generated username already exists, try again.',
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      message: 'Username is available, you can now proceed.',
+      username: newUserName,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Server error!',
       error: error.message,
     });
   }
 };
-export { loginUser, signUpUser, updateUserInfo, deleteUser };
+export {
+  loginUser,
+  signUpUser,
+  updateUserInfo,
+  deleteUser,
+  updatePassword,
+  deleteUserByAdmin,
+  createUsername,
+};

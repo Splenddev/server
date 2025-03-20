@@ -47,7 +47,7 @@ const placeOrder = async (req, res) => {
           description: `Order: ${orderSummary}`,
           logo: '../assets/logo.png',
         },
-        meta: { order_items: items, newOrder_id },
+        meta: { order_items: items, orderId: newOrder._id },
       },
       {
         headers: {

@@ -15,21 +15,23 @@ const placeOrder = async (req, res) => {
 
     const newOrder = new orderModel({
       userId,
+      address,
       items,
       amount,
-      address,
-      payment: { status: 'pending' },
+      // payment: { status: 'pending' },
     });
     await newOrder.save();
-    res.status(200).json({ success: true, orders: newOrder });
+    // res.json({ success: true, orders: newOrder });
     await userModel.findByIdAndUpdate(userId, { cartData: {} });
 
     const user = await userModel.findById(userId);
 
-    const transactionRef = `food_order_${Date.now()}`;
-    // const orderSummary = items
-    //   .map((item) => `${item.name} x${item.quantity}`)
-    //   .join(', ');
+    const transactionRef = `food_order_${
+      Math.floor(Math.random() * 9999) + Math.floor(Math.random * 9999)
+    }`;
+    const orderSummary = items
+      .map((item) => `${item.name} x${item.quantity}`)
+      .join(', ');
     // payment setup
     const response = await axios.post(
       'https://api.flutterwave.com/v3/payments',
@@ -39,16 +41,15 @@ const placeOrder = async (req, res) => {
         currency: 'NGN',
         redirect_url: `http://localhost:5173/verify-payment`,
         customer: {
-          email: user.email,
-          name: user.name,
+          name: address.firstName + address.lastName,
         },
         payment_option: 'card,banktransfer,ussd',
         customizations: {
           title: 'Kitchen Connect',
-          // description: `Order: ${orderSummary}`,
-          // logo: '../assets/logo.png',
+          description: `Order: ${orderSummary}`,
+          logo: '../assets/logo.png',
         },
-        // meta: { order_items: items },
+        meta: { order_items: items },
       },
       {
         headers: {
@@ -56,21 +57,71 @@ const placeOrder = async (req, res) => {
         },
       }
     );
-    // console.log(newOrder._id);
+    console.log(newOrder._id);
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      payment_url: response.data?.data?.link,
-      orderId: newOrder?._id,
+      payment_url: response.data.data.link,
+      orderId: newOrder._id,
     });
   } catch (error) {
-    // console.log(error.message);
-    if (!res.headersSent) {
-      return res.status(500).json({
-        success: false,
-        error: 'payment processing failed',
-      });
-    }
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: 'payment processing failed',
+    });
+  }
+};
+
+const createOrder = async (req, res) => {
+  try {
+    const { items, amount, address, userId } = req.body;
+
+    const newOrder = new orderModel({
+      userId,
+      address,
+      items,
+      amount,
+    });
+    await newOrder.save();
+    await userModel.findByIdAndUpdate(userId, { cartData: {} });
+    const payload = {
+      tx_ref: `ORDER-${Date.now()}`,
+      amount,
+      currency: 'NGN',
+      redirect_url: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
+      customer: {
+        email: address.email,
+      },
+      payment_option: 'card,banktransfer,ussd',
+      customizations: {
+        title: 'Food Order Payment',
+      },
+    };
+    const response = await axios.post(
+      'https://api.flutterwave.com/v3/payments',
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    res.status(200).json({
+      success: true,
+      message: 'Payment link generated successfully.',
+      newOrder,
+      data: response.data,
+      paymentUrl: response.data.data.link,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: 'Payment failed.',
+      error: error.message,
+    });
   }
 };
 
@@ -83,7 +134,6 @@ const verifyPayment = async (req, res) => {
         message: 'Missing parameters.',
       });
     }
-    console.log(orderId, transactionId);
 
     const order = await orderModel.findById(orderId);
     if (!order) {
@@ -138,7 +188,7 @@ const getOrders = async (req, res) => {
         .status(404)
         .json({ success: false, message: 'No orders found.' });
     }
-    res.status(200).json({ success: false, orders });
+    res.status(200).json({ success: true, data: orders });
   } catch (error) {
     console.error('Error fetching orders:', error);
     return res.status(500).json({ success: false, message: 'Server error!' });
@@ -161,4 +211,4 @@ const getAllUsersOrders = async (req, res) => {
     res.json({ success: true, message: 'Server error!' });
   }
 };
-export { placeOrder, verifyPayment, getOrders, getAllUsersOrders };
+export { placeOrder, createOrder, verifyPayment, getOrders, getAllUsersOrders };

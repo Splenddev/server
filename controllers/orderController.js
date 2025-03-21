@@ -6,72 +6,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 //placing orders from frontend
-const placeOrder = async (req, res) => {
-  try {
-    const { items, amount, address, userId } = req.body;
-    if (!items.length || !amount || !address) {
-      return res.status(400).json({ message: 'All fields are required.' });
-    }
-
-    const newOrder = new orderModel({
-      userId,
-      address,
-      items,
-      amount,
-      // payment: { status: 'pending' },
-    });
-    await newOrder.save();
-    // res.json({ success: true, orders: newOrder });
-    await userModel.findByIdAndUpdate(userId, { cartData: {} });
-
-    const user = await userModel.findById(userId);
-
-    const transactionRef = `food_order_${
-      Math.floor(Math.random() * 9999) + Math.floor(Math.random * 9999)
-    }`;
-    const orderSummary = items
-      .map((item) => `${item.name} x${item.quantity}`)
-      .join(', ');
-    // payment setup
-    const response = await axios.post(
-      'https://api.flutterwave.com/v3/payments',
-      {
-        tx_ref: transactionRef,
-        amount,
-        currency: 'NGN',
-        redirect_url: `http://localhost:5173/verify-payment`,
-        customer: {
-          name: address.firstName + address.lastName,
-        },
-        payment_option: 'card,banktransfer,ussd',
-        customizations: {
-          title: 'Kitchen Connect',
-          description: `Order: ${orderSummary}`,
-          logo: '../assets/logo.png',
-        },
-        meta: { order_items: items },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-        },
-      }
-    );
-    console.log(newOrder._id);
-
-    res.status(200).json({
-      success: true,
-      payment_url: response.data.data.link,
-      orderId: newOrder._id,
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      success: false,
-      message: 'payment processing failed',
-    });
-  }
-};
 
 const createOrder = async (req, res) => {
   try {
@@ -92,6 +26,7 @@ const createOrder = async (req, res) => {
       redirect_url: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
       customer: {
         email: address.email,
+        name: `${address.firstName} ${address.lastName}`,
       },
       payment_option: 'card,banktransfer,ussd',
       customizations: {
@@ -165,11 +100,27 @@ const verifyPayment = async (req, res) => {
         orderId: order._id,
         order,
       });
+    } else if (
+      paymentData.status === 'pending' &&
+      paymentData.data.status === 'pending'
+    ) {
+      order.payment.status = 'pending';
+      order.payment.transactionId = transactionId;
+      await order.save();
+      return res.status(200).json({
+        success: true,
+        status: 'success',
+        message: 'Payment pending.',
+        orderId: order._id,
+        order,
+      });
     } else {
-      await orderModel.findByIdAndDelete(orderId);
+      order.payment.status = 'failed';
+      order.payment.transactionId = transactionId;
+      await order.save();
       return res
-        .status(400)
-        .json({ success: false, status: 'false', message: 'Payment failed.' });
+        .status(200)
+        .json({ success: true, status: 'false', message: 'Payment failed.' });
     }
   } catch (error) {
     console.log(error);
@@ -180,15 +131,27 @@ const verifyPayment = async (req, res) => {
 };
 
 const getOrders = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
   try {
     const userId = req.body.userId;
-    const orders = await orderModel.find({ userId }).sort({ createdAt: -1 });
+    const totalOrders = await orderModel.countDocuments({ userId });
+    const orders = await orderModel
+      .find({ userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
     if (!orders.length) {
       return res
         .status(404)
         .json({ success: false, message: 'No orders found.' });
     }
-    res.status(200).json({ success: true, data: orders });
+    res.status(200).json({
+      success: true,
+      data: orders,
+      totalPages: Math.ceil(totalOrders / limit),
+    });
   } catch (error) {
     console.error('Error fetching orders:', error);
     return res.status(500).json({ success: false, message: 'Server error!' });
@@ -211,4 +174,78 @@ const getAllUsersOrders = async (req, res) => {
     res.json({ success: true, message: 'Server error!' });
   }
 };
-export { placeOrder, createOrder, verifyPayment, getOrders, getAllUsersOrders };
+const deleteOrder = async (req, res) => {
+  try {
+    const { userId, orderId } = req.body;
+    const user = await userModel.findById(userId);
+    const order = await orderModel.findById(orderId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found.',
+      });
+    }
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found.',
+      });
+    }
+    if (order.userId.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized.',
+      });
+    }
+
+    await orderModel.findByIdAndDelete(orderId);
+    res.status(200).json({
+      success: true,
+      message: 'Your order has been deleted successfully.',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete user order.',
+      error,
+    });
+  }
+};
+const deleteAllOrder = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found.',
+      });
+    }
+
+    const result = await orderModel.deleteMany({ userId });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User orders not found.',
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: 'Your orders has been deleted successfully.',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete user orders.',
+      error,
+    });
+  }
+};
+export {
+  createOrder,
+  verifyPayment,
+  getOrders,
+  getAllUsersOrders,
+  deleteOrder,
+  deleteAllOrder,
+};

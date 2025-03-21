@@ -26,7 +26,7 @@ const createOrder = async (req, res) => {
       redirect_url: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
       customer: {
         email: address.email,
-        name: `${address.firstName} ${address.lastName}`,
+       // name: `${address.firstName} ${address.lastName}`,
       },
       payment_option: 'card,banktransfer,ussd',
       customizations: {

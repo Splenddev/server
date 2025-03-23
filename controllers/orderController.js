@@ -23,10 +23,10 @@ const createOrder = async (req, res) => {
       tx_ref: `ORDER-${Date.now()}`,
       amount,
       currency: 'NGN',
-      redirect_url: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
+      redirect_url: `https://kitchen-connect-com.onrender.com/verify-payment?orderId=${newOrder._id}`,
       customer: {
         email: address.email,
-       // name: `${address.firstName} ${address.lastName}`,
+        // name: `${address.firstName} ${address.lastName}`,
       },
       payment_option: 'card,banktransfer,ussd',
       customizations: {

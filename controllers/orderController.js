@@ -109,7 +109,7 @@ const verifyPayment = async (req, res) => {
       await order.save();
       return res.status(200).json({
         success: true,
-        status: 'success',
+        status: 'pending',
         message: 'Payment pending.',
         orderId: order._id,
         order,
@@ -120,7 +120,13 @@ const verifyPayment = async (req, res) => {
       await order.save();
       return res
         .status(200)
-        .json({ success: true, status: 'false', message: 'Payment failed.' });
+        .json({
+          success: true,
+          status: 'false',
+          message: 'Payment failed.',
+          orderId: order._id,
+          order,
+        });
     }
   } catch (error) {
     console.log(error);

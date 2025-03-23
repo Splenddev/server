@@ -114,19 +114,20 @@ const verifyPayment = async (req, res) => {
         orderId: order._id,
         order,
       });
-    } else {
+    } else if (
+      paymentData.status === 'cancelled' &&
+      paymentData.data.status === 'cancelled'
+    ) {
       order.payment.status = 'failed';
       order.payment.transactionId = transactionId;
       await order.save();
-      return res
-        .status(200)
-        .json({
-          success: true,
-          status: 'false',
-          message: 'Payment failed.',
-          orderId: order._id,
-          order,
-        });
+      return res.status(200).json({
+        success: true,
+        status: 'false',
+        message: 'Payment failed.',
+        orderId: order._id,
+        order,
+      });
     }
   } catch (error) {
     console.log(error);

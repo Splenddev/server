@@ -30,7 +30,7 @@ const loginUser = async (req, res) => {
       success: true,
       message: 'login successful',
       token,
-      user: { id: user._id, name: user.name, email: user.email },
+      user,
     });
   } catch (error) {
     console.log(error);
@@ -40,11 +40,9 @@ const loginUser = async (req, res) => {
     });
   }
 };
-
 const createToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 };
-
 //sign Up User
 const signUpUser = async (req, res) => {
   const { name, password, email } = req.body;
@@ -104,7 +102,6 @@ const signUpUser = async (req, res) => {
     res.json({ success: false, message: 'Error!' });
   }
 };
-
 //update user info
 const updateUserInfo = async (req, res) => {
   try {
@@ -198,6 +195,34 @@ const updatePassword = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: 'Server error.', error });
+  }
+};
+
+//update profile pic
+const updateUserPic = async (req, res) => {
+  console.log(req.file);
+  if (!req.file) {
+    return res.status(404).json({ success: false, message: 'no image found' });
+  }
+  const profileImage = `${req.file.filename}`;
+
+  try {
+    const userId = req.body.userId;
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'user not found' });
+    }
+    user.profileImage = profileImage;
+    await user.save();
+    res.status(200).json({
+      success: true,
+      message: 'Profile image updated successfully',
+      user,
+    });
+  } catch (error) {
+    console.log(error);
   }
 };
 
@@ -335,4 +360,5 @@ export {
   updatePassword,
   deleteUserByAdmin,
   createUsername,
+  updateUserPic,
 };

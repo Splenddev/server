@@ -17,16 +17,26 @@ const createOrder = async (req, res) => {
       items,
       amount,
     });
+    const generateChars = () => {
+      const chars =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      for (let i = 0; i < 12; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    };
     await newOrder.save();
     await userModel.findByIdAndUpdate(userId, { cartData: {} });
     const payload = {
-      tx_ref: `ORDER-${Date.now()}`,
+      tx_ref: `ORDER-${generateChars()}`,
       amount,
       currency: 'NGN',
-      redirect_url: `https://kitchen-connect-com.onrender.com/verify-payment?orderId=${newOrder._id}`,
+      redirect_url: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
+      // `https://kitchen-connect-com.onrender.com
       customer: {
         email: address.email,
-        // name: `${address.firstName} ${address.lastName}`,
+        name: `${address.firstName} ${address.lastName}`,
       },
       payment_option: 'card,banktransfer,ussd',
       customizations: {
@@ -45,7 +55,7 @@ const createOrder = async (req, res) => {
     );
     res.status(200).json({
       success: true,
-      message: 'Payment link generated successfully.',
+      message: 'Payment link generated. Redirecting...',
       newOrder,
       data: response.data,
       paymentUrl: response.data.data.link,
@@ -62,8 +72,8 @@ const createOrder = async (req, res) => {
 
 const verifyPayment = async (req, res) => {
   try {
-    const { orderId, transactionId } = req.body;
-    if (!transactionId || !orderId) {
+    const { orderId, transactionId, tx_ref } = req.body;
+    if (!orderId || !tx_ref) {
       return res.status(400).json({
         status: 'false',
         message: 'Missing parameters.',
@@ -76,22 +86,49 @@ const verifyPayment = async (req, res) => {
         .status(404)
         .json({ success: false, message: 'Order not found' });
     }
-    const response = await axios.get(
-      `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-        },
-      }
-    );
+    let response;
+    if (transactionId) {
+      response = await axios.get(
+        `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
+          },
+        }
+      );
+    } else {
+      response = await axios.get(
+        `https://api.flutterwave.com/v3/transactions?tx_ref=${tx_ref}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
+          },
+        }
+      );
+    }
     const paymentData = response.data;
+    console.log(response);
+    if (!paymentData || !paymentData.data) {
+      return res.status(400).json({
+        success: false,
+        message: 'invalid data.',
+        paymentData,
+        datas: paymentData.data,
+      });
+    }
+    const transaction = Array.isArray(paymentData.data)
+      ? paymentData.data[0]
+      : paymentData.data;
 
-    if (
-      paymentData.status === 'success' &&
-      paymentData.data.status === 'successful'
-    ) {
+    if (!transaction || !transaction.status) {
+      return res.status(400).json({
+        success: false,
+        message: 'invalid data.',
+      });
+    }
+    if (transaction.status === 'successful') {
       order.payment.status = 'paid';
-      order.payment.transactionId = transactionId;
+      order.payment.transactionId = transactionId || transaction.id || tx_ref;
       await order.save();
       return res.status(200).json({
         success: true,
@@ -100,12 +137,9 @@ const verifyPayment = async (req, res) => {
         orderId: order._id,
         order,
       });
-    } else if (
-      paymentData.status === 'pending' &&
-      paymentData.data.status === 'pending'
-    ) {
+    } else if (transaction.status === 'pending') {
       order.payment.status = 'pending';
-      order.payment.transactionId = transactionId;
+      order.payment.transactionId = transactionId || transaction.id || tx_ref;
       await order.save();
       return res.status(200).json({
         success: true,
@@ -115,11 +149,11 @@ const verifyPayment = async (req, res) => {
         order,
       });
     } else if (
-      paymentData.status === 'cancelled' &&
-      paymentData.data.status === 'cancelled'
+      transaction.status === 'cancelled' ||
+      transaction.status === 'failed'
     ) {
       order.payment.status = 'failed';
-      order.payment.transactionId = transactionId;
+      order.payment.transactionId = transactionId || transaction.id || tx_ref;
       await order.save();
       return res.status(200).json({
         success: true,

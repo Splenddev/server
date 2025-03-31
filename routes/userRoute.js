@@ -34,7 +34,7 @@ const upload = multer({ storage: storage });
 
 userRouter.post('/register', signUpUser);
 userRouter.post('/login', loginUser);
-userRouter.post('/create-username', createUsername);
+userRouter.post('/create-username', authMiddleware, createUsername);
 userRouter.put('/update/profile', authMiddleware, updateUserInfo);
 userRouter.put('/update/password', authMiddleware, updatePassword);
 userRouter.put(

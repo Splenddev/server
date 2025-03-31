@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema(
     notifications: { type: String, default: '' },
     cartData: { type: Object, default: {} },
     settings: { type: Object, default: {} },
-    orderHistory: { type: Object, default: {} },
+    session: { type: Object, default: 0 },
     previousCredentials: [
       {
         username: String,

@@ -172,7 +172,24 @@ const verifyPayment = async (req, res) => {
 };
 const createOrderPaystack = async (req, res) => {
   try {
-    const { items, amount, address, userId, email } = req.body;
+    const { items, amount, address, userId, email, transactionId } = req.body;
+    // const generateChars = () => {
+    //       const chars =
+    //         'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    //       let result = '';
+    //       for (let i = 0; i < 12; i++) {
+    //         result += chars.charAt(Math.floor(Math.random() * chars.length));
+    //       }
+    //       return result;
+    //     };
+    // const generateNums = () => {
+    //   const nums = '0123456789';
+    //   let result = '';
+    //   for (let i = 0; i < 10; i++) {
+    //     result += nums.charAt(Math.floor(Math.random() * nums.length));
+    //   }
+    //   return result;
+    // };
 
     const newOrder = new orderModel({
       userId,
@@ -180,21 +197,14 @@ const createOrderPaystack = async (req, res) => {
       items,
       amount,
       email,
+      payment: { transactionId },
     });
-    const generateChars = () => {
-      const chars =
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      let result = '';
-      for (let i = 0; i < 12; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return result;
-    };
+
     await newOrder.save();
     await userModel.findByIdAndUpdate(userId, { cartData: {} });
     const payload = {
-      reference: `ORDER-${generateChars()}`,
-      amount:amount*100,
+      reference: `${transactionId}`,
+      amount: amount * 100,
       currency: 'NGN',
       // callback_url: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
       callback_url: `https://kitchen-connect-com.onrender.com/verify-payment?orderId=${newOrder._id}`,
@@ -214,12 +224,14 @@ const createOrderPaystack = async (req, res) => {
         },
       }
     );
+    console.log(response.data);
     res.status(200).json({
       success: true,
-      message: 'Payment link generated. Redirecting...',
+      message: response.data.message,
       newOrder,
       data: response.data,
       paymentUrl: response.data.data.authorization_url,
+      // reference: response.data.data.reference,
     });
   } catch (error) {
     console.error(error);
@@ -246,9 +258,8 @@ const verifyPaymentPaystack = async (req, res) => {
         .status(404)
         .json({ success: false, message: 'Order not found' });
     }
-    let response;
 
-    response = await axios.get(
+    const response = await axios.get(
       `https://api.paystack.co/transaction/verify/${reference}`,
       {
         headers: {
@@ -257,7 +268,7 @@ const verifyPaymentPaystack = async (req, res) => {
       }
     );
     const paymentData = response.data;
-    console.log(response);
+    console.log(paymentData);
     if (!paymentData || !paymentData.data) {
       return res.status(400).json({
         success: false,
@@ -352,19 +363,36 @@ const verifyPaymentPaystack = async (req, res) => {
       .json({ success: false, message: 'payment verification error.' });
   }
 };
-
 const getOrders = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
+  const status = req.query.status;
   const skip = (page - 1) * limit;
   try {
     const userId = req.body.userId;
-    const totalOrders = await orderModel.countDocuments({ userId });
+    const filter = { userId };
+    if (status && status !== 'all') {
+      filter['payment.status'] = status;
+    }
     const orders = await orderModel
-      .find({ userId })
-      .sort({ createdAt: -1 })
+      .find(filter)
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .sort({ createdAt: -1 });
+
+    const totalOrders = await orderModel.countDocuments(filter);
+    const paidCounts = await orderModel.countDocuments({
+      userId,
+      'payment.status': 'paid',
+    });
+    const pendingCounts = await orderModel.countDocuments({
+      userId,
+      'payment.status': 'pending',
+    });
+    const failedCounts = await orderModel.countDocuments({
+      userId,
+      'payment.status': 'failed',
+    });
     if (!orders.length) {
       return res
         .status(404)
@@ -374,12 +402,67 @@ const getOrders = async (req, res) => {
       success: true,
       data: orders,
       totalPages: Math.ceil(totalOrders / limit),
+      currentPage: page,
+      totalOrders,
+      statusCounts: {
+        all: totalOrders,
+        paid: paidCounts,
+        pending: pendingCounts,
+        failed: failedCounts,
+      },
     });
   } catch (error) {
     console.error('Error fetching orders:', error);
     return res.status(500).json({ success: false, message: 'Server error!' });
   }
 };
+const requery = async (req, res) => {
+  const { reference } = req.query;
+  const { orderId } = req.body;
+
+  try {
+    const order = await orderModel.findById(orderId);
+    if (!order) {
+      order.payment.status = 'failed';
+      await order.save();
+      return res.json({
+        message: 'Payment can not be found.',
+        status: 'failed',
+      });
+    }
+
+    const response = await axios.get(
+      `https://api.paystack.co/transaction/verify/${reference}`,
+      {
+        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+      }
+    );
+
+    if (response.data.status === false) {
+      order.payment.status = 'failed';
+      await order.save();
+      return res.json({ message: 'Payment failed', status: 'failed' });
+    }
+    console.log(response.data);
+    if (response.data.data.status === 'success') {
+      order.payment.status = 'successful';
+      await order.save();
+      return res.json({ message: 'Payment successful', status: 'successful' });
+    } else if (response.data.data.status === 'failed') {
+      order.payment.status = 'failed';
+      await order.save();
+      return res.json({ message: 'Payment failed', status: 'failed' });
+    } else {
+      return res.json({ message: 'Payment still pending', status: 'pending' });
+    }
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: 'Error checking payment status', error: error.message });
+    console.log(error.response.data);
+  }
+};
+
 const getAllUsersOrders = async (req, res) => {
   try {
     const orders = await orderModel
@@ -473,4 +556,5 @@ export {
   deleteAllOrder,
   verifyPaymentPaystack,
   createOrderPaystack,
+  requery,
 };

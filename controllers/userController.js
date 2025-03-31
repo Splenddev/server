@@ -23,14 +23,16 @@ const loginUser = async (req, res) => {
         message: 'wrong password',
       });
     }
-
     const token = createToken(user._id);
-
+    const fName = user.name.trim().split(' ')[0];
+    const lName = user.name.trim().split(' ').slice(1).join(' ');
+    await user.save();
     res.status(200).json({
       success: true,
       message: 'login successful',
       token,
       user,
+      name: { fName, lName },
     });
   } catch (error) {
     console.log(error);
@@ -143,11 +145,14 @@ const updateUserInfo = async (req, res) => {
     if (name) user.name = name;
     if (email) user.email = email;
     if (username) user.username = username;
+    const fName = user.name.trim().split(' ')[0];
+    const lName = user.name.trim().split(' ').slice(1).join(' ');
     await user.save();
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully.',
       user,
+      name: { fName, lName },
     });
   } catch (error) {
     console.log(error);
@@ -184,11 +189,15 @@ const updatePassword = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
-
+    const fName = user.name.trim().split(' ')[0];
+    const lName = user.name.trim().split(' ').slice(1).join(' ');
     await user.save();
-    return res
-      .status(200)
-      .json({ success: true, message: 'Password updated successfully.' });
+    return res.status(200).json({
+      success: true,
+      message: 'Password updated successfully.',
+      user,
+      name: { fName, lName },
+    });
   } catch (error) {
     console.log(error);
 
@@ -200,7 +209,6 @@ const updatePassword = async (req, res) => {
 
 //update profile pic
 const updateUserPic = async (req, res) => {
-  console.log(req.file);
   if (!req.file) {
     return res.status(404).json({ success: false, message: 'no image found' });
   }
@@ -215,11 +223,14 @@ const updateUserPic = async (req, res) => {
         .json({ success: false, message: 'user not found' });
     }
     user.profileImage = profileImage;
+    const fName = user.name.trim().split(' ')[0];
+    const lName = user.name.trim().split(' ').slice(1).join(' ');
     await user.save();
     res.status(200).json({
       success: true,
       message: 'Profile image updated successfully',
       user,
+      name: { fName, lName },
     });
   } catch (error) {
     console.log(error);
@@ -280,19 +291,20 @@ const deleteUserByAdmin = async (req, res) => {
 //create username
 const createUsername = async (req, res) => {
   try {
-    const { firstName, lastName, type } = req.body;
-
-    if (!req.session.usernameAttempts) {
-      req.session.usernameAttempts = 0;
+    const { firstName, lastName, type, userId } = req.body;
+    const user = await userModel.findById(userId);
+    // let session;
+    if (!user.session) {
+      user.session = 0;
     }
-    if (req.session.usernameAttempts > 0) {
+    if (user.session > 5) {
       return res.status(400).json({
         success: false,
         message: 'Limit reached! You can only generate 5 usernames.',
       });
     }
-    req.session.usernameAttempts++;
-
+    user.session++;
+    await user.save();
     if (type === 'useFirstName' && (!firstName || firstName.length < 3)) {
       return res.status(400).json({
         success: false,
@@ -309,7 +321,7 @@ const createUsername = async (req, res) => {
     let newUserName = '';
     let formattedCount = String(random_num).padStart(3, '0');
     if (type === 'autoGen') {
-      if (!firstName || !lastname) {
+      if (!firstName || !lastName) {
         const option = [
           'KC_USER',
           'KC_CUSTOMER',
@@ -319,7 +331,7 @@ const createUsername = async (req, res) => {
         newUserName =
           option[Math.floor(Math.random() * option.length)] + formattedCount;
       } else {
-        const option = [fisrtName, lastName];
+        const option = [firstName, lastName];
         newUserName =
           option[Math.floor(Math.random() * option.length)] + formattedCount;
       }
@@ -343,6 +355,7 @@ const createUsername = async (req, res) => {
       success: true,
       message: 'Username is available, you can now proceed.',
       username: newUserName,
+      session: user.session,
     });
   } catch (error) {
     return res.status(500).json({

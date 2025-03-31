@@ -11,7 +11,7 @@ const orderSchema = new mongoose.Schema(
     // payment: { type: Boolean, default: false },
     payment: {
       status: { type: String, default: 'pending' },
-      transactionId: { type: String, default: null },
+      transactionId: { type: String, default: null, required: true },
       paymentMethod: { type: String, default: 'Flutterwave' },
     },
   },

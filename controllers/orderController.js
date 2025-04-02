@@ -206,8 +206,8 @@ const createOrderPaystack = async (req, res) => {
       reference: `${transactionId}`,
       amount: amount * 100,
       currency: 'NGN',
-      callback_url: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
-      // callback_url: `https://kitchen-connect-com.onrender.com/verify-payment?orderId=${newOrder._id}`,
+      // callback_url: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
+      callback_url: `https://kitchen-connect-com.onrender.com/verify-payment?orderId=${newOrder._id}`,
       email: email,
       channels: ['card', 'bank', 'ussd'],
       metadata: {

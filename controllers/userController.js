@@ -241,13 +241,13 @@ const updateUserPic = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const userId = req.body.userId;
-    const user = await userModel.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found.',
-      });
-    }
+    // const user = await userModel.findById(userId);
+    // if (!user) {
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: 'User not found.',
+    //   });
+    // }
 
     await userModel.findByIdAndDelete(userId);
     res.status(200).json({

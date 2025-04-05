@@ -445,7 +445,7 @@ const requery = async (req, res) => {
     }
     console.log(response.data);
     if (response.data.data.status === 'success') {
-      order.payment.status = 'successful';
+      order.payment.status = 'paid';
       await order.save();
       return res.json({ success:true, message: 'Payment successful', status: 'successful' });
     } else if (response.data.data.status === 'failed') {

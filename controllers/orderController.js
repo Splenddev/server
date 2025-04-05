@@ -206,8 +206,8 @@ const createOrderPaystack = async (req, res) => {
       reference: `${transactionId}`,
       amount: amount * 100,
       currency: 'NGN',
-      callback_url: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
-      // callback_url: `https://kitchen-connect-com.onrender.com/verify-payment?orderId=${newOrder._id}`,
+      // callback_url: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
+      callback_url: `https://kitchen-connect-com.onrender.com/verify-payment?orderId=${newOrder._id}`,
       email: email,
       channels: ['card', 'bank', 'ussd'],
       metadata: {
@@ -417,8 +417,8 @@ const getOrders = async (req, res) => {
   }
 };
 const requery = async (req, res) => {
-  const { reference } = req.query;
-  const { orderId } = req.body;
+  const { orderId, reference } = req.body;
+  console.log(orderId, reference);
 
   try {
     const order = await orderModel.findById(orderId);
@@ -445,15 +445,30 @@ const requery = async (req, res) => {
     }
     console.log(response.data);
     if (response.data.data.status === 'success') {
-      order.payment.status = 'successful';
+      order.payment.status = 'paid';
       await order.save();
-      return res.json({ message: 'Payment successful', status: 'successful' });
-    } else if (response.data.data.status === 'failed') {
+      return res.json({
+        success: true,
+        message: 'Payment successful',
+        status: 'successful',
+      });
+    } else if (
+      response.data.data.status === 'failed' ||
+      response.data.data.status === 'abandoned'
+    ) {
       order.payment.status = 'failed';
       await order.save();
-      return res.json({ message: 'Payment failed', status: 'failed' });
+      return res.json({
+        success: true,
+        message: 'Payment failed',
+        status: 'failed',
+      });
     } else {
-      return res.json({ message: 'Payment still pending', status: 'pending' });
+      return res.json({
+        success: true,
+        message: 'Payment still pending',
+        status: 'pending',
+      });
     }
   } catch (error) {
     res

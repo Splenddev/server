@@ -417,8 +417,8 @@ const getOrders = async (req, res) => {
   }
 };
 const requery = async (req, res) => {
-  const { reference } = req.query;
-  const { orderId } = req.body;
+  //const { reference } = req.query;
+  const { orderId , reference} = req.body;
 
   try {
     const order = await orderModel.findById(orderId);
@@ -447,13 +447,13 @@ const requery = async (req, res) => {
     if (response.data.data.status === 'success') {
       order.payment.status = 'successful';
       await order.save();
-      return res.json({ message: 'Payment successful', status: 'successful' });
+      return res.json({ success:true, message: 'Payment successful', status: 'successful' });
     } else if (response.data.data.status === 'failed') {
       order.payment.status = 'failed';
       await order.save();
-      return res.json({ message: 'Payment failed', status: 'failed' });
+      return res.json({success:true,  message: 'Payment failed', status: 'failed' });
     } else {
-      return res.json({ message: 'Payment still pending', status: 'pending' });
+      return res.json({success:true,  message: 'Payment still pending', status: 'pending' });
     }
   } catch (error) {
     res

@@ -6,6 +6,7 @@ import userRouter from './routes/userRoute.js';
 import 'dotenv/config';
 import cartRouter from './routes/cartRoutes.js';
 import orderRouter from './routes/orderRoutes.js';
+import favoriteRoutes from './routes/favoriteRoutes.js';
 //app config
 const app = express();
 const port = process.env.PORT || 4000;
@@ -19,15 +20,8 @@ const port = process.env.PORT || 4000;
 app.use(
   cors({
     origin: '*',
-    // : function (origin, callback) {
-    //   if (!origin || allowedOrigin.includes(origin)) {
-    //     callback(null, true);
-    //   } else {
-    //     callback(new Error('Not allowed by CORS'));
-    //   }
-    // },
+
     methods: ['GET', 'PUT', 'POST', 'DELETE'],
-    // allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 app.use(express.json());
@@ -41,6 +35,7 @@ app.use('/images', express.static('uploads'));
 app.use('/api/user', userRouter);
 app.use('/api/cart', cartRouter);
 app.use('/api/order', orderRouter);
+app.use('/api/favorites', favoriteRoutes);
 
 app.get('/', (req, res) => {
   res.send('Hello World! API working');

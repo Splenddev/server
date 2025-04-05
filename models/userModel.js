@@ -25,6 +25,7 @@ const userSchema = new mongoose.Schema(
         changeDate: { type: Date, default: Date.now() },
       },
     ],
+    favorites: { type: Array, default: [] },
   },
   { minimize: false }
 );

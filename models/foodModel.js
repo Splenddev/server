@@ -14,7 +14,7 @@ const foodSchema = new mongoose.Schema(
       location: { type: String, required: true },
       restaurantPriority: { type: String, required: false },
     },
-    customerChoice: { type: String, required: false },
+    customerChoice: { type: String, required: false, default: 'Top Food' },
     foodInformation: {
       category: {
         ingredients: { type: [String], required: true },
@@ -22,16 +22,33 @@ const foodSchema = new mongoose.Schema(
       },
       nutrients: {
         calories: { type: Number, required: true },
-        others: { type: Map, of: Number, default: {} },
+        others: [
+          new mongoose.Schema(
+            {
+              name: { type: String },
+              composition: { type: Number },
+            },
+            {
+              _id: false,
+            }
+          ),
+        ],
       },
       healthImpacts: {
         benefits: { type: [String], required: true },
         risks: { type: [String], required: true },
       },
-      extrasAndMods: {
-        extras: { type: [String], default: [] },
-        mods: { type: [String], default: [] },
-      },
+      extras: [
+        new mongoose.Schema(
+          {
+            name: { type: String },
+            price: { type: Number },
+          },
+          {
+            _id: false,
+          }
+        ),
+      ],
     },
   },
   { timestamps: true }

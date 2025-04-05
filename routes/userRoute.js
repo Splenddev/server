@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   createUsername,
+  createUserOrderData,
   deleteUser,
   deleteUserByAdmin,
   loginUser,
@@ -35,6 +36,7 @@ const upload = multer({ storage: storage });
 userRouter.post('/register', signUpUser);
 userRouter.post('/login', loginUser);
 userRouter.post('/create-username', authMiddleware, createUsername);
+userRouter.post('/create/order/user/info', authMiddleware, createUserOrderData);
 userRouter.put('/update/profile', authMiddleware, updateUserInfo);
 userRouter.put('/update/password', authMiddleware, updatePassword);
 userRouter.put(

@@ -159,7 +159,6 @@ const updateUserInfo = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error!' });
   }
 };
-
 //update user password
 const updatePassword = async (req, res) => {
   try {
@@ -206,7 +205,6 @@ const updatePassword = async (req, res) => {
       .json({ success: false, message: 'Server error.', error });
   }
 };
-
 //update profile pic
 const updateUserPic = async (req, res) => {
   if (!req.file) {
@@ -236,7 +234,6 @@ const updateUserPic = async (req, res) => {
     console.log(error);
   }
 };
-
 //delete user account
 const deleteUser = async (req, res) => {
   try {
@@ -262,7 +259,6 @@ const deleteUser = async (req, res) => {
     });
   }
 };
-
 //delete user account (admin)
 const deleteUserByAdmin = async (req, res) => {
   const userId = req.params.id;
@@ -287,7 +283,6 @@ const deleteUserByAdmin = async (req, res) => {
     });
   }
 };
-
 //create username
 const createUsername = async (req, res) => {
   try {
@@ -365,6 +360,46 @@ const createUsername = async (req, res) => {
     });
   }
 };
+//update user address
+const createUserOrderData = async (req, res) => {
+  const { userId, area, address } = req.body;
+  if (!area || !address) {
+    res.status(404).json({ success: false, message: 'Missing parameters' });
+  }
+  const user = userModel.findById(userId);
+  const fName = user.name.trim().split(' ')[0];
+  const lName = user.name.trim().split(' ').slice(1).join(' ');
+  const email = user.email;
+  const phoneNumber = user.phoneNumber;
+  try {
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+    }
+    res.status(200).json({
+      success: true,
+      data: { fName, lName, email, phoneNumber, area, address },
+      message: 'User info for Order updated successfully.',
+    });
+  } catch (error) {
+    console.log('Server error', error);
+  }
+};
+const updatePaymentMethod = async (req, res) => {
+  const { userId, paymentMethod } = req.body;
+  const user = userModel.findById(userId);
+  await userModel.findByIdAndUpdate(userId, { paymentMethod });
+  try {
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+    }
+    res.status(200).json({
+      success: true,
+      message: 'User order payment method successfully.',
+    });
+  } catch (error) {
+    console.log('Server error', error);
+  }
+};
 export {
   loginUser,
   signUpUser,
@@ -374,4 +409,5 @@ export {
   deleteUserByAdmin,
   createUsername,
   updateUserPic,
+  createUserOrderData,
 };

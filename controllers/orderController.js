@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 //placing orders from frontend
+// const client_url='http://localhost:5173'
+const client_url = 'https://kitchen-connect-com.onrender.com';
 const generateChars = () => {
   const chars = '0123456789';
   let result = '';
@@ -31,9 +33,7 @@ const createOrder = async (req, res) => {
       tx_ref: `ORDER-${generateChars()}`,
       amount,
       currency: 'NGN',
-      redirect_url: `https://kitchen-connect-com.onrender.com/verify-payment?orderId=${newOrder._id}`,
-      // `https://kitchen-connect-com.onrender.com
-      //http://localhost:5173
+      redirect_url: `${client_url}/verify-payment?orderId=${newOrder._id}`,
       customer: {
         email: address.email,
         name: `${address.firstName} ${address.lastName}`,
@@ -169,7 +169,6 @@ const verifyPayment = async (req, res) => {
       .json({ success: false, message: 'payment verification error.' });
   }
 };
-
 const createOrderPaystack = async (req, res) => {
   try {
     const { items, amount, address, userId, email, transactionId } = req.body;
@@ -188,8 +187,7 @@ const createOrderPaystack = async (req, res) => {
       reference: `${transactionId}`,
       amount: amount * 100,
       currency: 'NGN',
-      callback_url: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
-      //  callback_url: `https://kitchen-connect-com.onrender.com/verify-payment?orderId=${newOrder._id}`,
+      callback_url: `${client_url}/verify-payment?orderId=${newOrder._id}`,
       channels: ['card', 'bank', 'ussd'],
       metadata: {
         orderId: newOrder._id,
@@ -299,43 +297,6 @@ const verifyPaymentPaystack = async (req, res) => {
       orderId: order._id,
       order,
     });
-    // if (transaction.status === 'successful') {
-    //   order.payment.status = 'paid';
-    //   order.payment.transactionId = transactionId || transaction.id || reference;
-    //   await order.save();
-    //   return res.status(200).json({
-    //     success: true,
-    //     status: 'success',
-    //     message: 'Payment verified.',
-    //     orderId: order._id,
-    //     order,
-    //   });
-    // } else if (transaction.status === 'pending') {
-    //   order.payment.status = 'pending';
-    //   order.payment.transactionId = transactionId || transaction.id || reference;
-    //   await order.save();
-    //   return res.status(200).json({
-    //     success: true,
-    //     status: 'pending',
-    //     message: 'Payment pending.',
-    //     orderId: order._id,
-    //     order,
-    //   });
-    // } else if (
-    //   transaction.status === 'cancelled' ||
-    //   transaction.status === 'failed'
-    // ) {
-    //   order.payment.status = 'failed';
-    //   order.payment.transactionId = transactionId || transaction.id || reference;
-    //   await order.save();
-    //   return res.status(200).json({
-    //     success: true,
-    //     status: 'false',
-    //     message: 'Payment failed.',
-    //     orderId: order._id,
-    //     order,
-    //   });
-    // }
   } catch (error) {
     console.log(error);
     res
@@ -355,7 +316,7 @@ const createOrderMonnify = async (req, res) => {
       ).toString('base64');
 
       const res = await axios.post(
-        `https://sandbox.monnify.com/api/v1/auth/login`,
+        `${MONNIFY_BASE_URL}/auth/login`,
         {},
         {
           headers: {
@@ -396,12 +357,12 @@ const createOrderMonnify = async (req, res) => {
       paymentDescription: 'Kitchen Connect - Order Payment',
       currencyCode: 'NGN',
       contractCode: MONNIFY_CONTRACT_CODE,
-      redirectUrl: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
+      redirectUrl: `${client_url}/verify-payment?orderId=${newOrder._id}`,
       paymentMethods: ['CARD', 'ACCOUNT_TRANSFER'],
     };
 
     const response = await axios.post(
-      `https://sandbox.monnify.com/api/v1/merchant/transactions/init-transaction`,
+      `${MONNIFY_BASE_URL}/merchant/transactions/init-transaction`,
       payload,
       {
         headers: {
@@ -432,7 +393,7 @@ const verifyMonnifyPayment = async (req, res) => {
       ).toString('base64');
 
       const res = await axios.post(
-        `https://sandbox.monnify.com/api/v1/auth/login`,
+        `${MONNIFY_BASE_URL}/auth/login`,
         {},
         {
           headers: {
@@ -447,7 +408,7 @@ const verifyMonnifyPayment = async (req, res) => {
     const accessToken = await getMonnifyToken();
 
     const response = await axios.get(
-      `https://sandbox.monnify.com/api/v1/merchant/transactions/query?paymentReference=${reference}`,
+      `${MONNIFY_BASE_URL}/merchant/transactions/query?paymentReference=${reference}`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -548,13 +509,7 @@ const getOrders = async (req, res) => {
   }
 };
 const requery = async (req, res) => {
-<<<<<<< HEAD
   const { orderId, reference } = req.body;
-  console.log(orderId, reference);
-=======
-  //const { reference } = req.query;
-  const { orderId , reference} = req.body;
->>>>>>> 56905fdcefdb6ff25d45e6d828b1aadb47487dc2
 
   try {
     const order = await orderModel.findById(orderId);
@@ -583,7 +538,6 @@ const requery = async (req, res) => {
     if (response.data.data.status === 'success') {
       order.payment.status = 'paid';
       await order.save();
-<<<<<<< HEAD
       return res.json({
         success: true,
         message: 'Payment successful',
@@ -606,15 +560,6 @@ const requery = async (req, res) => {
         message: 'Payment still pending',
         status: 'pending',
       });
-=======
-      return res.json({ success:true, message: 'Payment successful', status: 'successful' });
-    } else if (response.data.data.status === 'failed') {
-      order.payment.status = 'failed';
-      await order.save();
-      return res.json({success:true,  message: 'Payment failed', status: 'failed' });
-    } else {
-      return res.json({success:true,  message: 'Payment still pending', status: 'pending' });
->>>>>>> 56905fdcefdb6ff25d45e6d828b1aadb47487dc2
     }
   } catch (error) {
     res
@@ -633,7 +578,7 @@ const requeryMonnify = async (req, res) => {
       ).toString('base64');
 
       const res = await axios.post(
-        `https://sandbox.monnify.com/api/v1/auth/login`,
+        `${MONNIFY_BASE_URL}/auth/login`,
         {},
         {
           headers: {
@@ -647,7 +592,7 @@ const requeryMonnify = async (req, res) => {
     const accessToken = await getMonnifyToken();
 
     const response = await axios.get(
-      `https://sandbox.monnify.com/api/v1/merchant/transactions/query?paymentReference=${reference}`,
+      `${MONNIFY_BASE_URL}/merchant/transactions/query?paymentReference=${reference}`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -794,13 +739,17 @@ const deleteOrderAdminMultiple = async (req, res) => {
   }
 };
 const updateStatus = async (req, res) => {
-  try{
-    await orderModel.findByIdAndUpdate(req.body.orderId,{status:req.body.status})
-res.status(200).json({success:true,message:'Status updated successfully'})
-  }catch(error){
-    console.log(error)
+  try {
+    await orderModel.findByIdAndUpdate(req.body.orderId, {
+      status: req.body.status,
+    });
+    res
+      .status(200)
+      .json({ success: true, message: 'Status updated successfully' });
+  } catch (error) {
+    console.log(error);
   }
-}
+};
 export {
   createOrder,
   verifyPayment,

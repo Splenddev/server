@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 //placing orders from frontend
-// const client_url='http://localhost:5173'
+// const client_url = 'http://localhost:5173';
 const client_url = 'https://kitchen-connect-com.onrender.com';
 const generateChars = () => {
   const chars = '0123456789';
@@ -187,6 +187,7 @@ const createOrderPaystack = async (req, res) => {
       reference: `${transactionId}`,
       amount: amount * 100,
       currency: 'NGN',
+      email: email,
       callback_url: `${client_url}/verify-payment?orderId=${newOrder._id}`,
       channels: ['card', 'bank', 'ussd'],
       metadata: {

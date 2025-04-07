@@ -6,10 +6,15 @@ import {
   createOrderPaystack,
   verifyPaymentPaystack,
   getOrders,
-  deleteAllOrder,
+  deleteOrderAdmin,
   deleteOrder,
   verifyPayment,
   requery,
+  createOrderMonnify,
+  verifyMonnifyPayment,
+  requeryMonnify,
+  deleteOrderAdminMultiple,
+  updateStatus,
 } from '../controllers/orderController.js';
 import { generateTransactionId } from '../middlewares/genTxId.js';
 
@@ -20,13 +25,23 @@ orderRouter.post(
   generateTransactionId,
   createOrderPaystack
 );
+orderRouter.post(
+  '/create/monnify',
+  authMiddleware,
+  generateTransactionId,
+  createOrderMonnify
+);
 orderRouter.post('/verify-payments/paystack', verifyPaymentPaystack);
+orderRouter.post('/verify-payments/monnify', verifyMonnifyPayment);
 orderRouter.post('/create', authMiddleware, createOrder);
 orderRouter.post('/verify-payments', verifyPayment);
 orderRouter.post('/userorders', authMiddleware, getOrders);
 orderRouter.get('/list', getAllUsersOrders);
-orderRouter.post('/requery', requery);
+orderRouter.post('/requery/paystack', requery);
+orderRouter.post('/requery/monnify', requeryMonnify);
 orderRouter.post('/delete', authMiddleware, deleteOrder);
-orderRouter.post('/delete/all', authMiddleware, deleteAllOrder);
+orderRouter.post('/delete/admin', deleteOrderAdmin);
+orderRouter.post('/delete/admin/multiple', deleteOrderAdminMultiple);
+orderRouter.post('/status', updateStatus);
 
 export default orderRouter;

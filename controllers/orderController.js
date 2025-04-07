@@ -6,7 +6,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 //placing orders from frontend
-
+const generateChars = () => {
+  const chars = '0123456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 const createOrder = async (req, res) => {
   try {
     const { items, amount, address, userId } = req.body;
@@ -17,15 +24,7 @@ const createOrder = async (req, res) => {
       items,
       amount,
     });
-    const generateChars = () => {
-      const chars =
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      let result = '';
-      for (let i = 0; i < 12; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return result;
-    };
+
     await newOrder.save();
     await userModel.findByIdAndUpdate(userId, { cartData: {} });
     const payload = {
@@ -170,34 +169,17 @@ const verifyPayment = async (req, res) => {
       .json({ success: false, message: 'payment verification error.' });
   }
 };
+
 const createOrderPaystack = async (req, res) => {
   try {
     const { items, amount, address, userId, email, transactionId } = req.body;
-    // const generateChars = () => {
-    //       const chars =
-    //         'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    //       let result = '';
-    //       for (let i = 0; i < 12; i++) {
-    //         result += chars.charAt(Math.floor(Math.random() * chars.length));
-    //       }
-    //       return result;
-    //     };
-    // const generateNums = () => {
-    //   const nums = '0123456789';
-    //   let result = '';
-    //   for (let i = 0; i < 10; i++) {
-    //     result += nums.charAt(Math.floor(Math.random() * nums.length));
-    //   }
-    //   return result;
-    // };
-
     const newOrder = new orderModel({
       userId,
       address,
       items,
       amount,
       email,
-      payment: { transactionId },
+      payment: { transactionId, paymentMethod: 'Paystack' },
     });
 
     await newOrder.save();
@@ -206,9 +188,8 @@ const createOrderPaystack = async (req, res) => {
       reference: `${transactionId}`,
       amount: amount * 100,
       currency: 'NGN',
-      // callback_url: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
-      callback_url: `https://kitchen-connect-com.onrender.com/verify-payment?orderId=${newOrder._id}`,
-      email: email,
+      callback_url: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
+      //  callback_url: `https://kitchen-connect-com.onrender.com/verify-payment?orderId=${newOrder._id}`,
       channels: ['card', 'bank', 'ussd'],
       metadata: {
         orderId: newOrder._id,
@@ -231,7 +212,6 @@ const createOrderPaystack = async (req, res) => {
       newOrder,
       data: response.data,
       paymentUrl: response.data.data.authorization_url,
-      // reference: response.data.data.reference,
     });
   } catch (error) {
     console.error(error);
@@ -363,6 +343,157 @@ const verifyPaymentPaystack = async (req, res) => {
       .json({ success: false, message: 'payment verification error.' });
   }
 };
+const MONNIFY_API_KEY = process.env.MONNIFY_API_KEY;
+const MONNIFY_BASE_URL = 'https://sandbox.monnify.com/api/v1';
+const MONNIFY_SECRET_KEY = process.env.MONNIFY_SECRET_KEY;
+const MONNIFY_CONTRACT_CODE = process.env.MONNIFY_CONTRACT_CODE;
+const createOrderMonnify = async (req, res) => {
+  try {
+    const getMonnifyToken = async () => {
+      const credentials = Buffer.from(
+        `${MONNIFY_API_KEY}:${MONNIFY_SECRET_KEY}`
+      ).toString('base64');
+
+      const res = await axios.post(
+        `https://sandbox.monnify.com/api/v1/auth/login`,
+        {},
+        {
+          headers: {
+            Authorization: `Basic ${credentials}`,
+          },
+        }
+      );
+
+      return res.data.responseBody.accessToken;
+    };
+    const accessToken = await getMonnifyToken();
+    const { items, amount, address, userId, email, transactionId } = req.body;
+    if (!items || !amount || !address || !email) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Missing credentials' });
+    }
+    const newOrder = new orderModel({
+      userId,
+      address,
+      items,
+      amount,
+      email,
+      payment: { status: 'pending', transactionId, paymentMethod: 'Monnify' },
+    });
+
+    await newOrder.save();
+
+    const transactionReference = transactionId || `ORDER-${generateChars()}`;
+
+    const payload = {
+      amount,
+      customerName: `${address?.firstName || 'User'} ${
+        address?.lastName || ''
+      }`,
+      customerEmail: email,
+      paymentReference: transactionReference,
+      paymentDescription: 'Kitchen Connect - Order Payment',
+      currencyCode: 'NGN',
+      contractCode: MONNIFY_CONTRACT_CODE,
+      redirectUrl: `http://localhost:5173/verify-payment?orderId=${newOrder._id}`,
+      paymentMethods: ['CARD', 'ACCOUNT_TRANSFER'],
+    };
+
+    const response = await axios.post(
+      `https://sandbox.monnify.com/api/v1/merchant/transactions/init-transaction`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    console.log(response.data);
+
+    res.status(200).json({
+      success: true,
+      message: 'Payment initialized',
+      paymentUrl: response.data.responseBody.checkoutUrl,
+      order: newOrder,
+    });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ success: false, message: 'Monnify payment init failed', error });
+  }
+};
+const verifyMonnifyPayment = async (req, res) => {
+  try {
+    const getMonnifyToken = async () => {
+      const credentials = Buffer.from(
+        `${MONNIFY_API_KEY}:${MONNIFY_SECRET_KEY}`
+      ).toString('base64');
+
+      const res = await axios.post(
+        `https://sandbox.monnify.com/api/v1/auth/login`,
+        {},
+        {
+          headers: {
+            Authorization: `Basic ${credentials}`,
+          },
+        }
+      );
+
+      return res.data.responseBody.accessToken;
+    };
+    const { orderId, reference } = req.body;
+    const accessToken = await getMonnifyToken();
+
+    const response = await axios.get(
+      `https://sandbox.monnify.com/api/v1/merchant/transactions/query?paymentReference=${reference}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const transaction = response.data.responseBody;
+    console.log(transaction);
+
+    const order = await orderModel.findById(orderId);
+
+    if (!order) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Order not found' });
+    }
+
+    switch (transaction.paymentStatus) {
+      case 'PAID':
+        order.payment.status = 'paid';
+        break;
+      case 'PENDING':
+        order.payment.status = 'pending';
+        break;
+      default:
+        order.payment.status = 'failed';
+        break;
+    }
+
+    order.payment.transactionId = reference;
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      status: order.payment.status,
+      orderId: order._id,
+      order,
+    });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ success: false, message: 'Verification failed', error });
+  }
+};
 const getOrders = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -477,7 +608,76 @@ const requery = async (req, res) => {
     console.log(error.response.data);
   }
 };
+const requeryMonnify = async (req, res) => {
+  const { orderId, reference } = req.body;
 
+  try {
+    const getMonnifyToken = async () => {
+      const credentials = Buffer.from(
+        `${MONNIFY_API_KEY}:${MONNIFY_SECRET_KEY}`
+      ).toString('base64');
+
+      const res = await axios.post(
+        `https://sandbox.monnify.com/api/v1/auth/login`,
+        {},
+        {
+          headers: {
+            Authorization: `Basic ${credentials}`,
+          },
+        }
+      );
+
+      return res.data.responseBody.accessToken;
+    };
+    const accessToken = await getMonnifyToken();
+
+    const response = await axios.get(
+      `https://sandbox.monnify.com/api/v1/merchant/transactions/query?paymentReference=${reference}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    const order = await orderModel.findById(orderId);
+    const transaction = response.data.responseBody;
+    console.log(transaction);
+    switch (transaction.paymentStatus) {
+      case 'PAID':
+        order.payment.status = 'paid';
+        res.json({
+          success: true,
+          message: 'Payment successful',
+          status: 'successful',
+        });
+        break;
+      case 'PENDING':
+        order.payment.status = 'pending';
+        res.json({
+          success: true,
+          message: 'Payment still pending',
+          status: 'pending',
+        });
+        break;
+      default:
+        order.payment.status = 'failed';
+        res.json({
+          success: true,
+          message: 'Payment failed',
+          status: 'failed',
+        });
+        break;
+    }
+
+    order.payment.transactionId = reference;
+    await order.save();
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: 'Error checking payment status', error: error.message });
+    console.log(error.response.data);
+  }
+};
 const getAllUsersOrders = async (req, res) => {
   try {
     const orders = await orderModel
@@ -532,44 +732,73 @@ const deleteOrder = async (req, res) => {
     });
   }
 };
-const deleteAllOrder = async (req, res) => {
+const deleteOrderAdmin = async (req, res) => {
   try {
-    const { userId } = req.body;
-    const user = await userModel.findById(userId);
-    if (!user) {
+    const { orderId } = req.body;
+    const order = await orderModel.findById(orderId);
+    if (!order) {
       return res.status(404).json({
         success: false,
-        message: 'User not found.',
+        message: 'Order not found.',
       });
     }
 
-    const result = await orderModel.deleteMany({ userId });
-    if (result.deletedCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'User orders not found.',
-      });
-    }
+    await orderModel.findByIdAndDelete(orderId);
     res.status(200).json({
       success: true,
-      message: 'Your orders has been deleted successfully.',
+      message: 'Your order has been deleted successfully.',
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: 'Failed to delete user orders.',
+      message: 'Failed to delete order.',
       error,
     });
   }
 };
+const deleteOrderAdminMultiple = async (req, res) => {
+  try {
+    const { orderIds } = req.body;
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No Order Ids  found.',
+      });
+    }
+    const result = await orderModel.deleteMany({ _id: { $in: orderIds } });
+    res.status(200).json({
+      success: true,
+      message: `${result.deletedCount} orders(s) deleted successfully`,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error! Failed to delete order.',
+      error,
+    });
+  }
+};
+const updateStatus = async (req, res) => {
+  try{
+    await orderModel.findByIdAndUpdate(req.body.orderId,{status:req.body.status})
+res.status(200).json({success:true,message:'Status updated successfully'})
+  }catch(error){
+    console.log(error)
+  }
+}
 export {
   createOrder,
   verifyPayment,
   getOrders,
   getAllUsersOrders,
   deleteOrder,
-  deleteAllOrder,
+  deleteOrderAdmin,
   verifyPaymentPaystack,
   createOrderPaystack,
   requery,
+  requeryMonnify,
+  createOrderMonnify,
+  verifyMonnifyPayment,
+  deleteOrderAdminMultiple,
+  updateStatus,
 };

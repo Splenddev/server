@@ -1,3 +1,4 @@
+import { privateDecrypt } from 'crypto';
 import foodModel from '../models/foodModel.js';
 import fs from 'fs';
 
@@ -148,5 +149,65 @@ const getOneFood = async (req, res) => {
     console.log(error);
   }
 };
+const filterFood = async (req, res) => {
+  const { filterData, search } = req.body;
+  try {
+    let filter = {};
+    if (filterData.category !== '' && filterData.category !== undefined) {
+      filter.category = { $in: filterData.category };
+    }
+    if (filterData.price !== '' && filterData.price !== undefined) {
+      filter.price = { $in: filterData.price };
+    }
+    if (filterData.reput !== '' && filterData.reput !== undefined) {
+      filter.customerChoice = {
+        $in: filterData.reput,
+      };
+    }
+    if (filterData.location !== '' && filterData.location !== undefined) {
+      filter['kitchen.location'] = { $in: filterData.location };
+    }
+    if (filterData.kitchen !== '' && filterData.kitchen !== undefined) {
+      filter['kitchen.kitchen_name'] = { $in: filterData.kitchen };
+    }
+    if (search && search.trim() !== '') {
+      filter.name = { $regex: search.trim(), $options: 'i' };
+    }
+    if (Object.keys(filter).length === 0)
+      return res.status(400).json({
+        success: false,
+        message:
+          'Cant proceed. Please choose at least one filter in Filter Option e.g category',
+      });
+    const food = await foodModel.find(Object.keys(filter).length ? filter : {});
 
-export { addFood, listFood, searchFood, getOneFood, removeFood, updateFood };
+    if (!food || food.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No food matched your filter (or/and) search. Try another.',
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: 'Food found',
+      data: food,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message:
+        'An error occurred while filtering (and/or) searching this food.',
+    });
+  }
+};
+
+export {
+  addFood,
+  listFood,
+  searchFood,
+  getOneFood,
+  removeFood,
+  updateFood,
+  filterFood,
+};

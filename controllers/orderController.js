@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-//placing orders from frontend
+// placing orders from frontend
 // const client_url = 'http://localhost:5173';
 const client_url = 'https://kitchen-connect-com.onrender.com';
 const generateChars = () => {

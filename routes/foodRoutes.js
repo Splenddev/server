@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   addFood,
+  filterFood,
   getOneFood,
   listFood,
   removeFood,
@@ -29,6 +30,7 @@ foodRouter.get('/list', listFood);
 foodRouter.post('/get/one', getOneFood);
 foodRouter.get('/list/search', searchFood);
 foodRouter.post('/remove', removeFood);
+foodRouter.post('/filter', filterFood);
 foodRouter.put('/update', upload.single('image'), updateFood);
 
 export default foodRouter;

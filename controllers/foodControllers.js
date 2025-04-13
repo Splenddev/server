@@ -1,6 +1,6 @@
-import { privateDecrypt } from 'crypto';
 import foodModel from '../models/foodModel.js';
 import fs from 'fs';
+import userModel from '../models/userModel.js';
 
 // add food
 
@@ -151,6 +151,7 @@ const getOneFood = async (req, res) => {
 };
 const filterFood = async (req, res) => {
   const { filterData, search } = req.body;
+
   try {
     let filter = {};
     if (filterData.category !== '' && filterData.category !== undefined) {
@@ -173,18 +174,26 @@ const filterFood = async (req, res) => {
     if (search && search.trim() !== '') {
       filter.name = { $regex: search.trim(), $options: 'i' };
     }
-    if (Object.keys(filter).length === 0)
-      return res.status(400).json({
+    console.log(filterData);
+    console.log(filter);
+    let food;
+    if (Object.keys(filter).length === 0) {
+      food = await foodModel.find({}).sort({ createdAt: -1 });
+      return res.json({
         success: false,
         message:
           'Cant proceed. Please choose at least one filter in Filter Option e.g category',
+        data: food,
       });
-    const food = await foodModel.find(Object.keys(filter).length ? filter : {});
+    }
+    food = await foodModel
+      .find(Object.keys(filter).length ? filter : {})
+      .sort({ createdAt: -1 });
 
     if (!food || food.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'No food matched your filter (or/and) search. Try another.',
+        message: 'No food matched your filter. Try another.',
       });
     }
     res.status(200).json({
@@ -196,9 +205,55 @@ const filterFood = async (req, res) => {
     console.log(error);
     res.status(500).json({
       success: false,
-      message:
-        'An error occurred while filtering (and/or) searching this food.',
+      message: 'An error occurred while filtering this food.',
     });
+  }
+};
+const addReviewFood = async (req, res) => {
+  const { rating, comment, userId, foodId, nameDisplay } = req.body;
+  try {
+    const food = await foodModel.findById(foodId);
+    const user = await userModel.findById(userId);
+    if (!food)
+      return res
+        .status(404)
+        .json({ success: false, message: 'Food not found!' });
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: 'User not found!' });
+    const alreadyReviewed = food.reviews.find(
+      (r) => r.user.id.toString() === userId
+    );
+    if (alreadyReviewed)
+      return res.status(400).json({
+        success: false,
+        message: 'User have already reviewed this food item.',
+      });
+    const review = {
+      user: {
+        id: userId,
+        image: user.profileImage,
+        name: nameDisplay ? 'Anonymous' : user.name,
+      },
+      rating,
+      comment,
+    };
+    food.reviews.push(review);
+
+    food.averageRating =
+      food.reviews.reduce((acc, r) => acc + r.rating, 0) / food.reviews.length;
+    await food.save();
+    res.status(201).json({
+      success: true,
+      message: 'Review added!',
+      reviews: food.reviews,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: 'Server error!', error: error.message });
+    console.log(error);
   }
 };
 
@@ -210,4 +265,5 @@ export {
   removeFood,
   updateFood,
   filterFood,
+  addReviewFood,
 };

@@ -7,6 +7,7 @@ import 'dotenv/config';
 import cartRouter from './routes/cartRoutes.js';
 import orderRouter from './routes/orderRoutes.js';
 import favoriteRoutes from './routes/favoriteRoutes.js';
+import reviewRouter from './routes/reviewRoutes.js';
 //app config
 const app = express();
 const port = process.env.PORT || 4000;
@@ -35,6 +36,7 @@ app.use('/images', express.static('uploads'));
 app.use('/api/user', userRouter);
 app.use('/api/cart', cartRouter);
 app.use('/api/order', orderRouter);
+app.use('/api/review', reviewRouter);
 app.use('/api/favorites', favoriteRoutes);
 
 app.get('/', (req, res) => {

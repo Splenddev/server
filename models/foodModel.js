@@ -50,6 +50,24 @@ const foodSchema = new mongoose.Schema(
         ),
       ],
     },
+    reviews: {
+      type: [
+        new mongoose.Schema(
+          {
+            user: { type: Object, default: {} },
+            comment: { type: String },
+            date: { type: Date, default: Date.now },
+            image: { type: String },
+            rating: { type: Number, min: 1, max: 5, required: true },
+          },
+          {
+            _id: false,
+          }
+        ),
+      ],
+      default: [],
+    },
+    averageRating: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

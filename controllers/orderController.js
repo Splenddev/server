@@ -188,7 +188,7 @@ const createOrderPaystack = async (req, res) => {
       amount: amount * 100,
       currency: 'NGN',
       email: email,
-      callback_url: `${client_url}/verify-payment?orderId=${newOrder._id}`,
+      callback_url: `${client_url}/verify?orderId=${newOrder._id}`,
       channels: ['card', 'bank', 'ussd'],
       metadata: {
         orderId: newOrder._id,
@@ -358,7 +358,7 @@ const createOrderMonnify = async (req, res) => {
       paymentDescription: 'Kitchen Connect - Order Payment',
       currencyCode: 'NGN',
       contractCode: MONNIFY_CONTRACT_CODE,
-      redirectUrl: `${client_url}/verify-payment?orderId=${newOrder._id}`,
+      redirectUrl: `${client_url}/verify?orderId=${newOrder._id}`,
       paymentMethods: ['CARD', 'ACCOUNT_TRANSFER'],
     };
 

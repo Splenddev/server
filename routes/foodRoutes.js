@@ -7,7 +7,9 @@ import {
   removeFood,
   searchFood,
   updateFood,
+  addReviewFood,
 } from '../controllers/foodControllers.js';
+import authMiddleware from '../middlewares/auth.js';
 import multer from 'multer';
 
 const foodRouter = express.Router();
@@ -31,6 +33,7 @@ foodRouter.post('/get/one', getOneFood);
 foodRouter.get('/list/search', searchFood);
 foodRouter.post('/remove', removeFood);
 foodRouter.post('/filter', filterFood);
+foodRouter.put('/review', authMiddleware, addReviewFood);
 foodRouter.put('/update', upload.single('image'), updateFood);
 
 export default foodRouter;

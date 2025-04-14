@@ -32,3 +32,16 @@ export const addReviewWebsite = async (req, res) => {
     console.log(error);
   }
 };
+export const getReview = async (req, res) => {
+  try {
+    const reviews = await reviewModel.find({});
+    res
+      .status(201)
+      .json({ success: true, message: 'Reviews fetched!', data: reviews });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: 'Server error!', error: error.message });
+    console.log(error);
+  }
+};

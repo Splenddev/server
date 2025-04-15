@@ -16,6 +16,7 @@ import {
   deleteOrderAdminMultiple,
   updateStatus,
   trackOrder,
+  completeOrder,
 } from '../controllers/orderController.js';
 import { generateTransactionId } from '../middlewares/genTxId.js';
 
@@ -45,5 +46,6 @@ orderRouter.post('/delete/admin', deleteOrderAdmin);
 orderRouter.post('/delete/admin/multiple', deleteOrderAdminMultiple);
 orderRouter.post('/status', updateStatus);
 orderRouter.get('/track/:id', trackOrder);
+orderRouter.post('/complete', completeOrder);
 
 export default orderRouter;

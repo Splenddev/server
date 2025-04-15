@@ -767,7 +767,24 @@ const trackOrder = async (req, res) => {
     });
   }
 };
+const completeOrder = async (req, res) => {
+  try {
+    const order = await orderModel.findById(req.body.id);
+    order.completeOrder = true;
+    res.json({
+      success: true,
+      message: 'Order completed! Thank you for using our website.',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error!',
+      error,
+    });
+  }
+};
 export {
+  completeOrder,
   createOrder,
   verifyPayment,
   getOrders,

@@ -14,6 +14,14 @@ const orderSchema = new mongoose.Schema(
       transactionId: { type: String, default: null, required: true },
       paymentMethod: { type: String, default: 'Flutterwave' },
     },
+    receiptSent: {
+      type: Boolean,
+      default: false,
+    },
+    completeOrder: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

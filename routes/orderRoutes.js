@@ -15,6 +15,7 @@ import {
   requeryMonnify,
   deleteOrderAdminMultiple,
   updateStatus,
+  trackOrder,
 } from '../controllers/orderController.js';
 import { generateTransactionId } from '../middlewares/genTxId.js';
 
@@ -43,5 +44,6 @@ orderRouter.post('/delete', authMiddleware, deleteOrder);
 orderRouter.post('/delete/admin', deleteOrderAdmin);
 orderRouter.post('/delete/admin/multiple', deleteOrderAdminMultiple);
 orderRouter.post('/status', updateStatus);
+orderRouter.get('/track/:id', trackOrder);
 
 export default orderRouter;

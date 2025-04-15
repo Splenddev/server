@@ -751,6 +751,22 @@ const updateStatus = async (req, res) => {
     console.log(error);
   }
 };
+const trackOrder = async (req, res) => {
+  try {
+    const order = await orderModel.findById(req.params.id);
+    res.json({
+      success: true,
+      status: order.status,
+      message: 'Order status fetched.',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error!',
+      error,
+    });
+  }
+};
 export {
   createOrder,
   verifyPayment,
@@ -766,4 +782,5 @@ export {
   verifyMonnifyPayment,
   deleteOrderAdminMultiple,
   updateStatus,
+  trackOrder,
 };

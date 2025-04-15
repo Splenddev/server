@@ -2,7 +2,6 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import PDFDocument from 'pdfkit';
 import getStream from 'get-stream';
-import { sendReceiptEmail } from '../utils/sendEmail.js';
 import Order from '../models/orderModel.js';
 dotenv.config();
 

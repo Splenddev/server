@@ -93,10 +93,13 @@ const createStyledPDF = (doc, order) => {
   });
 
   doc.moveDown(2);
-  doc.fontSize(15).fillColor('#555555').text(`Sub Total: #${order.amount}`, {
-    align: 'right',
-    width: 500,
-  });
+  doc
+    .fontSize(14)
+    .fillColor('#555555')
+    .text(`Sub Total: #${getSubTotal(order.items)}`, {
+      align: 'right',
+      width: 500,
+    });
   doc.moveDown(0.3);
   doc.text(
     `Delivery Fee: #${

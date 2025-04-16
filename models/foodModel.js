@@ -42,7 +42,12 @@ const foodSchema = new mongoose.Schema(
         new mongoose.Schema(
           {
             name: { type: String },
-            price: { type: Number },
+            type: { type: String, enum: ['swap', 'add_on', 'choice'] },
+            options: [
+              { label: { type: String } },
+              { price: { type: Number } },
+              { max: { type: Number } },
+            ],
           },
           {
             _id: false,
